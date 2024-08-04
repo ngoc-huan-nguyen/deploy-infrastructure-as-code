@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "ProjectName",
+    "ParameterValue": "udagram"
+  },
+  {
+    "ParameterKey": "VpcCIDR",
+    "ParameterValue": "10.2.0.0/16"
+  },
+  {
+    "ParameterKey": "FirstPublicSubnetCIDR",
+    "ParameterValue": "10.2.0.0/24"
+  },
+  {
+    "ParameterKey": "SecondPublicSubnetCIDR",
+    "ParameterValue": "10.2.1.0/24"
+  },
+  {
+    "ParameterKey": "FirstPrivateSubnetCIDR",
+    "ParameterValue": "10.2.2.0/24"
+  },
+  {
+    "ParameterKey": "SecondPrivateSubnetCIDR",
+    "ParameterValue": "10.2.3.0/24"
+  }
+]
