@@ -26,7 +26,7 @@ then
     --template-body file://$3   \
     --parameters file://$4 \
     --capabilities "CAPABILITY_NAMED_IAM"  \
-    --region=us-east-1
+    --region us-east-1
 fi
 if [ $1 == "update" ]
 then
@@ -34,12 +34,12 @@ then
     --template-body file://$3  \
     --parameters file://$4  \
     --capabilities "CAPABILITY_NAMED_IAM"  \
-    --region=us-east-1
+    --region us-east-1
     
 fi
 if [ $1 == "delete" ]
 then
    aws cloudformation delete-stack --stack-name $2 \
-    --region=us-east-1
+    --region us-east-1
 fi
 
