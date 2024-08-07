@@ -30,7 +30,7 @@ then
 fi
 if [ $1 == "update" ]
 then
-    aws cloudformation update-stack --stack-name $12  \
+    aws cloudformation update-stack --stack-name $2  \
     --template-body file://$3  \
     --parameters file://$4  \
     --capabilities "CAPABILITY_NAMED_IAM"  \

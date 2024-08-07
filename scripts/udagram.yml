@@ -1,10 +1,13 @@
 Parameters:
   ProjectName:
-    Description: Project name for tagging resource
+    Description: An project name
     Type: String
+  ImageId:
+    Description: An image id
+    Type: String
+
 Resources:
-  # load balancer security group
-  SecurityGroup:
+  LBSecGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow http access to our load balancer
@@ -15,32 +18,27 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
-      SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-  # load balancer security group
-  WebAppSecurityGroup:
+
+  WebServerSecGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow http access to our load balancer
+      GroupDescription: Allow http access to our hosts from the LB Security Group
       VpcId:
         Fn::ImportValue: !Sub '${ProjectName}-vpc-id'
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: 0.0.0.0/0
+          SourceSecurityGroupId: !Ref LBSecGroup
       SecurityGroupEgress:
         - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
+          FromPort: 0
+          ToPort: 65535
           CidrIp: 0.0.0.0/0
-  LaunchTemplate:
+  WebAppLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Sub '${ProjectName}-web-server'
+      LaunchTemplateName: !Sub '${ProjectName}-web-servers'
       LaunchTemplateData:
         UserData:
           Fn::Base64: !Sub |
@@ -48,28 +46,21 @@ Resources:
             sudo apt-get update -y
             sudo apt-get install nginx -y
             sudo service nginx start
-        ImageId: ami-0557a15b87f6559cf
+        ImageId: !Ref ImageId
         SecurityGroupIds:
-          - !Ref SecurityGroup
+          - !Ref WebServerSecGroup
         InstanceType: t2.micro
         BlockDeviceMappings:
           - DeviceName: '/dev/sdk'
             Ebs:
               VolumeSize: '10'
         IamInstanceProfile:
-          Name: !Ref InstanceRole
+          Name: !Ref WebAppInstanceProfile
 
-  InstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Path: '/'
-      Roles:
-        - !Ref InstanceRole
-
-  InstanceRole:
+  WebAppInstanceRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${ProjectName}-web-server'
+      RoleName: !Sub '${ProjectName}-web-servers'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -89,29 +80,34 @@ Resources:
                   - 's3:GetObject'
                 Resource:
                   - !Sub 'arn:aws:s3:::any-bucket-name/*'
-  # web app auto scaling group
-  AutoScalingGroup:
+
+  WebAppInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: '/'
+      Roles:
+        - !Ref WebAppInstanceRole
+  WebAppGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
         - Fn::ImportValue: !Sub '${ProjectName}-private-subnets'
       LaunchTemplate:
-        LaunchTemplateId: !Ref LaunchTemplate
-        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+        LaunchTemplateId: !Ref WebAppLaunchTemplate
+        Version: !GetAtt WebAppLaunchTemplate.LatestVersionNumber
       MinSize: '1'
       DesiredCapacity: '1'
       MaxSize: '3'
       TargetGroupARNs:
-        - Ref: ALBTargetGroup
-
-  ALBLoadBalancer:
+        - Ref: WebAppTargetGroup
+  WebAppLB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Subnets:
         - Fn::ImportValue: !Sub '${ProjectName}-first-public-subnet'
         - Fn::ImportValue: !Sub '${ProjectName}-second-public-subnet'
       SecurityGroups:
-        - Ref: SecurityGroup
+        - Ref: LBSecGroup
 
   Listener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -119,9 +115,9 @@ Resources:
       DefaultActions:
         - Type: forward
           TargetGroupArn:
-            Ref: ALBTargetGroup
+            Ref: WebAppTargetGroup
       LoadBalancerArn:
-        Ref: ALBLoadBalancer
+        Ref: WebAppLB
       Port: '80'
       Protocol: HTTP
 
@@ -130,14 +126,14 @@ Resources:
     Properties:
       Actions:
         - Type: forward
-          TargetGroupArn: !Ref 'ALBTargetGroup'
+          TargetGroupArn: !Ref 'WebAppTargetGroup'
       Conditions:
         - Field: path-pattern
           Values: [/]
       ListenerArn: !Ref 'Listener'
       Priority: 1
 
-  ALBTargetGroup:
+  WebAppTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckIntervalSeconds: 10
@@ -151,3 +147,9 @@ Resources:
       VpcId:
         Fn::ImportValue:
           Fn::Sub: '${ProjectName}-vpc-id'
+Outputs:
+  WebAppLBDNSName:
+    Description: DNS name or Public URL of the Load Balancer
+    Value: !Join ['', ['http://', !GetAtt WebAppLB.DNSName]]
+    Export:
+      Name: !Sub ${ProjectName}-lb-dns
