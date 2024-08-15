@@ -5,9 +5,6 @@ Parameters:
   ImageId:
     Description: An image id
     Type: String
-  BucketName:
-    Description: An s3 bucket
-    Type: String
   KeyPair:
     Type: String
     Description: key pair
@@ -42,7 +39,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          SourceSecurityGroupId: !Ref LBSecGroup
+          CidrIp: 0.0.0.0/0
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 0
@@ -90,7 +87,7 @@ Resources:
             Action:
               - 'sts:AssumeRole'
       Policies:
-        - PolicyName: s3
+        - PolicyName: s3-policy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -98,7 +95,7 @@ Resources:
                 Action:
                   - 's3:GetObject'
                 Resource:
-                  - !Sub 'arn:aws:s3:::${BucketName}/*'
+                  - !Sub 'arn:aws:s3:::s3://huannn4-udagram/*'
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 
