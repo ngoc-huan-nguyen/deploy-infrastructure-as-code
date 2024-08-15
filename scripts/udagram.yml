@@ -5,7 +5,12 @@ Parameters:
   ImageId:
     Description: An image id
     Type: String
-
+  BucketName:
+    Description: An s3 bucket
+    Type: String
+  KeyPair:
+    Type: String
+    Description: key pair
 Resources:
   LBSecGroup:
     Type: AWS::EC2::SecurityGroup
@@ -18,7 +23,11 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
-
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
   WebServerSecGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -29,6 +38,10 @@ Resources:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
+          SourceSecurityGroupId: !Ref LBSecGroup
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
           SourceSecurityGroupId: !Ref LBSecGroup
       SecurityGroupEgress:
         - IpProtocol: tcp
@@ -44,9 +57,15 @@ Resources:
           Fn::Base64: !Sub |
             #!/bin/bash
             sudo apt-get update -y
-            sudo apt-get install nginx -y
-            sudo service nginx start
+            sudo apt-get install unzip awscli -y
+            sudo apt-get install apache2 -y
+            sudo systemctl start apache2.service
+
+            cd /var/www/html
+
+            aws s3 cp s3://huannn4-udagram/index.html ./
         ImageId: !Ref ImageId
+        KeyName: !Ref KeyPair
         SecurityGroupIds:
           - !Ref WebServerSecGroup
         InstanceType: t2.micro
@@ -79,7 +98,9 @@ Resources:
                 Action:
                   - 's3:GetObject'
                 Resource:
-                  - !Sub 'arn:aws:s3:::any-bucket-name/*'
+                  - !Sub 'arn:aws:s3:::${BucketName}/*'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 
   WebAppInstanceProfile:
     Type: AWS::IAM::InstanceProfile
