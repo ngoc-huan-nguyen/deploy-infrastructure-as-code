@@ -76,7 +76,7 @@ Resources:
   WebAppInstanceRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${ProjectName}-web-servers'
+      RoleName: !Sub '${ProjectName}-role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -93,9 +93,10 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - 's3:GetObject'
+                  - s3:GetObject
                 Resource:
-                  - !Sub 'arn:aws:s3:::s3://huannn4-udagram/*'
+                  - arn:aws:s3:::huannn4-udagram
+                  - arn:aws:s3:::huannn4-udagram/*
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 
